@@ -1,8 +1,3 @@
-/*
-참고: https://wikidocs.net/156068
-날짜: 2022-01-10
-*/
-
 class Calculator {
     int result = 0;
 
