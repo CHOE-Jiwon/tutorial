@@ -2,13 +2,19 @@
 #### 날짜: 2021-01-10
 
 ```
-뜬금없지만, 자바 실행법
+뜬금없지만
 
+## How to run java?
 # create class file of java file
 $ javac {java_file_name}
 
 # execute class file
 $ java {class_file_name}
+
+## java 파일 내에 2개의 클래스?
+하나의 java 파일 내에 2개의 클래스가 등장하는건 좀 특이하지만 가능한 코드이다.
+하나의 java 파일 내에는 여러개의 클래스를 선언할 수 있다.
+단, 파일명이 Counter.java 라면 Counter.java 내의 Counter라는 클래스는 public으로 선언하라는 관례가 있다.
 ```
 
 
