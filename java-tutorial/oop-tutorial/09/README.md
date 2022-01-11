@@ -47,3 +47,4 @@ public class Lion extends Predator implements Barkable {
 > 추상 클래스에는 abstract 메소드 외에 실제 메소드도 추가할 수 있다.  
 추상 클래스에 실제 메소드를 추가하면, 해당 추상 클래스를 상속받는 객체에서 그 메소드들을 사용할 수 있게 된다.
 
+인터페이스에서는 실제 메소드가 아닌 스태틱 메소드, 디폴트 메소드를 만들 수 있다.
