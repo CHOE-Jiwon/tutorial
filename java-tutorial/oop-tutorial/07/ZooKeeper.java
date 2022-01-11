@@ -1,7 +1,7 @@
 public class ZooKeeper {
 
-    public void feed(Predetor predetor) {
-        System.out.println(predetor.getFood());
+    public void feed(Predator predator) {
+        System.out.println(predator.getFood());
     }
 
     public static void main(String[] args) {
