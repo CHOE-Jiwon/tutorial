@@ -9,6 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.annotation.Commit;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -22,17 +23,17 @@ class MemberServiceIntegrationTest {
     @Autowired MemberRepository memberRepository;
 
     @Test
+//    @Commit 해당 어노테이션을 사용하면 트랜잭션이 커밋까지 됨.
     void 회원가입() {   // test code에서는 함수명을 한글로 지어도 상관 없음! + build 시에 테스트 코드는 포함 안됨
         //given
         Member member = new Member();
-        member.setName("spring2");
-        System.out.println(member.getName());
+        member.setName("spring120");
+
         //when
         Long saveId = memberService.join(member);
 
         //then
         Member findMember = memberService.findOne(saveId).get();
-        System.out.println(findMember.getName());
         Assertions.assertEquals(member.getName(), findMember.getName());
 //        Assertions.assertThat(member.getName()).isEqualTo(findMember.getName());        //assertThat 은 junit이 아니라 assertj 에 포함된 메소드
 
