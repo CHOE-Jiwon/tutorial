@@ -14,7 +14,7 @@ from airflow.operators.python import PythonOperator
 dag = DAG(
     dag_id = "download_rocket_launches",            # DAG Name
     start_date = airflow.utils.dates.days_ago(14),  # DAG Start Date
-    schedule_interval = None,                       # DAG Execution Interval
+    schedule_interval = "@daily",                   # Airflow 에서 자정을 나타내는 0 0 * * * 이랑 동일
 )
 
 # BashOperator를 이용하는 task 생성
