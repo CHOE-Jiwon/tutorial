@@ -1,6 +1,4 @@
-# ETC Study
-
-## 1. XCom
+# XCom
 ---
 1. XCom이란 태스크 간에 작은 데이터를 공유할 수 있게 도와주는 기능이다.
 2. xcom_push 를 이용해 {key:value} 를 등록할 수 있다.
