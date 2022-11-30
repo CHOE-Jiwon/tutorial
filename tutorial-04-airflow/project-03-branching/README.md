@@ -62,10 +62,25 @@ join_datasets = PythonOperator(
 #### 단점
 1. join_datasets 태스크에 연결되는 태스크가 3개.
    1. 기존 의도는 판매 / 날씨 데이터를 가져온 다음 두 데이터를 조인하는것
-   2. 지금 플로우는 ERP -> 판매 / 날씨 데이터 를 가져온 다음 조인.
+   2. 지금 플로우는 ERP -> 판매 / 날씨 데이터 를 가져온 다음 조인
 
 ## branch_dag_join
+위에서 보았던 DAG에서 더미 태스크를 추가하여 브랜치 조건을 명확하게 해보자.
 
+목표는 브랜치를 좀 더 독립적으로 유지할 수 있게 하는 것이다.
+
+```python
+join_branch = DummyOperator(task_id = "join_erp_branch", trigger_rule = "none_failed")
+...
+[clean_sales_old, clean_sales_new] >> join_erp_branch
+[join_erp_branch, clean_weather] >> join_datasets
+```
+
+![join_branch을 활용하여 dag 구성](../resources/03-branching-04_branch_dag_join_01.png)
+
+이제, join_datasets은 trigger_rule을 설정할 필요가 없어졌다.
+
+이로써, 브랜치를 좀 더 독립적으로 유지할 수 있게 되었다.
 
 # 참고
 ---
