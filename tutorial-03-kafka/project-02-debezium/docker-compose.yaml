@@ -1,0 +1,40 @@
+version: "3"
+services:
+    kafka-connect-dev:
+        image: confluentinc/cp-kafka-connect-base:latest
+        container_name: kafka-connect-dev
+        ports:
+            - 8084:8083
+        environment:
+            CONNECT_BOOTSTRAP_SERVERS: "34.84.228.202:9092,35.243.118.30:9092,34.146.150.233:9092"
+            CONNECT_ZOOKEEPER_CONNECT: "34.84.228.202:2181,35.243.118.30:2181,34.146.150.233:2181"
+            CONNECT_REST_PORT: 8083
+            CONNECT_GROUP_ID: dev-cdc-connect
+            CONNECT_CONFIG_STORAGE_TOPIC: dev-connect-configs
+            CONNECT_OFFSET_STORAGE_TOPIC: dev-connect-offsets
+            CONNECT_STATUS_STORAGE_TOPIC: dev-connect-status
+            CONNECT_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+            CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+            CONNECT_REST_ADVERTISED_HOST_NAME: "kafka-connect-dev"
+            CONNECT_LOG4J_APPENDER_STDOUT_LAYOUT_CONVERSIONPATTERN: "[%d] %p %X{connector.context}%m (%c:%L)%n"
+            CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: "3"
+            CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: "3"
+            CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: "3"
+            #  ---------------
+            CONNECT_PLUGIN_PATH: /usr/share/java,/usr/share/confluent-hub-components,/data/connect-jars
+            # If you want to use the Confluent Hub installer to d/l component, but make them available
+            # when running this offline, spin up the stack once and then run :
+            #   docker cp kafka-connect:/usr/share/confluent-hub-components ./data/connect-jars
+        # In the command section, $ are replaced with $$ to avoid the error 'Invalid interpolation format for "command" option'
+        command:
+            - bash
+            - -c
+            - |
+                echo "Installing Connector"
+                confluent-hub install --no-prompt confluentinc/kafka-connect-json-schema-converter:7.3.0
+                confluent-hub install --no-prompt debezium/debezium-connector-mysql:latest
+                #
+                echo "Launching Kafka Connect worker"
+                /etc/confluent/docker/run &
+                #
+                sleep infinity
