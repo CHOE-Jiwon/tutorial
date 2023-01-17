@@ -1,0 +1,170 @@
+version: "3"
+networks:
+    kafka-cluster:
+        driver: bridge
+services:
+    kafka:
+        image: 'bitnami/kafka:3.3.1'
+        container_name: kafka
+        ports:
+            - '9092:9092'
+            - '19092:19092'
+            - '7071:7071'
+        environment:
+            - KAFKA_CFG_LISTENERS=INTERNAL://:19092,EXTERNAL://0.0.0.0:9092
+            - KAFKA_CFG_ADVERTISED_LISTENERS=INTERNAL://cw-kafka-cluster-03:19092,EXTERNAL://34.146.150.233:9092
+            - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+            - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL
+            - KAFKA_BROKER_ID=3
+            - ALLOW_PLAINTEXT_LISTENER=yes
+            - KAFKA_HEAP_OPTS=-Xmx6g -Xms6g -XX:MetaspaceSize=96m -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35 -XX:G1HeapRegionSize=16M -XX:MinMetaspaceFreeRatio=50 -XX:MaxMetaspaceFreeRatio=80 -javaagent:/bitnami/kafka/jmx/jmx_prometheus_javaagent-0.17.0.jar=7071:/bitnami/kafka/jmx/prom.yaml
+            - KAFKA_CFG_ZOOKEEPER_CONNECT=cw-kafka-cluster-01:2181,cw-kafka-cluster-02:2181,zookeeper:2181
+        volumes:
+            - ./kafka-persistence:/bitnami/kafka
+        depends_on:
+            - zookeeper
+        networks:
+            - kafka-cluster
+    kafdrop:
+        image: obsidiandynamics/kafdrop
+        ports: 
+            - 9000:9000
+        environment: 
+            - KAFKA_BROKERCONNECT=cw-kafka-cluster-01:19092,cw-kafka-cluster-02:19092,kafka:19092
+            - JVM_OPTS=-Xms512M -Xmx512M
+            - SERVER_SERVLET_CONTEXTPATH=/
+    burrow: #컨슈머 랙 데이터 수집
+        build: ./burrow
+        container_name: burrow
+        restart: always
+        volumes:
+            - ./burrow/docker-config:/etc/burrow/
+            - ./burrow/tmp:/var/tmp/burrow
+        ports:
+            - 8000:8000
+        depends_on:
+            - zookeeper
+            - kafka
+        restart: always
+        networks:
+            - kafka-cluster
+    telegraf: #컨슈머 랙 데이터 전달
+        image: telegraf
+        container_name: telegraf
+        volumes:
+            -  ./telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+        depends_on:
+            - burrow
+        networks:
+            - kafka-cluster
+    zookeeper:
+        image: 'bitnami/zookeeper:latest'
+        container_name: zookeeper
+        restart: always
+        ports:
+            - 2181:2181
+            - 2888:2888
+            - 3888:3888
+            - 7000:7000
+        environment:
+            - ZOO_SERVER_ID=3
+            - ZOO_PORT_NUMBER=2181 
+            - ZOO_TICK_TIME=2000
+            - ZOO_ENABLE_PROMETHEUS_METRICS=yes
+            - ALLOW_ANONYMOUS_LOGIN=yes
+            - ZOO_SERVERS=cw-kafka-cluster-01:2888:3888::1,cw-kafka-cluster-02:2888:3888::2,0.0.0.0:2888:3888::3
+            - ZOO_4LW_COMMANDS_WHITELIST=*
+        volumes:
+            - ./zookeeper-persistence:/bitnami/zookeeper
+        networks:
+            - kafka-cluster
+    kafka-connect:
+        image: confluentinc/cp-kafka-connect:7.3.0
+        container_name: kafka-connect
+        depends_on:
+            - kafka
+        ports:
+            - 8083:8083
+            - 7072:7072
+        environment:
+            CONNECT_BOOTSTRAP_SERVERS: "kafka:19092"
+            CONNECT_REST_PORT: 8083
+            CONNECT_GROUP_ID: gcp-connect
+            CONNECT_CONFIG_STORAGE_TOPIC: gcp-connect-configs
+            CONNECT_OFFSET_STORAGE_TOPIC: gcp-connect-offsets
+            CONNECT_STATUS_STORAGE_TOPIC: gcp-connect-status
+            CONNECT_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+            CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+            CONNECT_REST_ADVERTISED_HOST_NAME: "cw-kafka-cluster-03"
+            CONNECT_LOG4J_APPENDER_STDOUT_LAYOUT_CONVERSIONPATTERN: "[%d] %p %X{connector.context}%m (%c:%L)%n"
+            CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: "3"
+            CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: "3"
+            CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: "3"
+            KAFKA_HEAP_OPTS: "-Xms1G -Xmx1G -javaagent:/data/jmx/jmx_prometheus_javaagent-0.17.0.jar=7072:/data/jmx/prom.yaml"
+            #  ---------------
+            CONNECT_PLUGIN_PATH: /usr/share/java,/usr/share/confluent-hub-components,/data/connect-jars
+            # If you want to use the Confluent Hub installer to d/l component, but make them available
+            # when running this offline, spin up the stack once and then run : 
+            #   docker cp kafka-connect:/usr/share/confluent-hub-components ./data/connect-jars
+        volumes:
+            - ./kafka-connect-persistence:/data
+        # In the command section, $ are replaced with $$ to avoid the error 'Invalid interpolation format for "command" option'
+        command:
+            - bash
+            - -c
+            - |
+                echo "Installing Connector"
+                confluent-hub install --no-prompt wepay/kafka-connect-bigquery:latest
+                confluent-hub install --no-prompt confluentinc/kafka-connect-gcs:latest
+                #
+                echo "Launching Kafka Connect worker"
+                /etc/confluent/docker/run &
+                #
+                sleep infinity
+        networks:
+            - kafka-cluster
+    kafka-connect-dev:
+        image: confluentinc/cp-kafka-connect:7.3.0
+        container_name: kafka-connect-dev
+        depends_on:
+            - kafka
+        ports:
+            - 8082:8083
+            - 7073:7073
+        environment:
+            CONNECT_BOOTSTRAP_SERVERS: "kafka:19092"
+            CONNECT_REST_PORT: 8083
+            CONNECT_GROUP_ID: gcp-dev-connect
+            CONNECT_CONFIG_STORAGE_TOPIC: gcp-dev-connect-configs
+            CONNECT_OFFSET_STORAGE_TOPIC: gcp-dev-connect-offsets
+            CONNECT_STATUS_STORAGE_TOPIC: gcp-dev-connect-status
+            CONNECT_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+            CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+            CONNECT_REST_ADVERTISED_HOST_NAME: "cw-kafka-cluster-03"
+            CONNECT_LOG4J_APPENDER_STDOUT_LAYOUT_CONVERSIONPATTERN: "[%d] %p %X{connector.context}%m (%c:%L)%n"
+            CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: "3"
+            CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: "3"
+            CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: "3"
+            KAFKA_HEAP_OPTS: "-Xms1G -Xmx1G -javaagent:/data/jmx/jmx_prometheus_javaagent-0.17.0.jar=7073:/data/jmx/prom.yaml"
+            #  ---------------
+            CONNECT_PLUGIN_PATH: /usr/share/java,/usr/share/confluent-hub-components,/data/connect-jars
+            # If you want to use the Confluent Hub installer to d/l component, but make them available
+            # when running this offline, spin up the stack once and then run : 
+            #   docker cp kafka-connect:/usr/share/confluent-hub-components ./data/connect-jars
+        volumes:
+            - ./kafka-connect-persistence:/data
+        # In the command section, $ are replaced with $$ to avoid the error 'Invalid interpolation format for "command" option'
+        command:
+            - bash
+            - -c
+            - |
+                echo "Installing Connector"
+                confluent-hub install --no-prompt wepay/kafka-connect-bigquery:latest
+                confluent-hub install --no-prompt confluentinc/kafka-connect-gcs:latest
+                #
+                echo "Launching Kafka Connect worker"
+                /etc/confluent/docker/run &
+                #
+                sleep infinity
+        networks:
+            - kafka-cluster
