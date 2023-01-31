@@ -1,6 +1,7 @@
 # Task Instance Study
 
 ## 1. Task State
+
 ---
 
 ![task_state_flow](../../resources/task_state_flow.png)
@@ -46,3 +47,14 @@
     2. ```airflow.models.DagRun:verify_integrity``` 에 의해 태스크가 removed 상태로 바뀌게 됨.
     3. 위 함수가 데이터베이스 내에서 연관된 DAG에 더이상 존재하지 않는 task_id를 발견할 때 적용됨.
     4. 참고로 2.3.3 버젼의 graph를 보면 Removed 상태값은 보이지 않음.
+    
+
+## 2. Memory space
+
+---
+1. Airflow DAG이 실행될 때, Airflow Worker가 Python Interpreter 인스턴스를 생성한다.
+    1. 즉, DAG은 각자의 memory space를 가지고 있으며, 다른 DAG과 메모리 공유가 (일반적으로는) 불가능하다는 말이다.
+2. DAG 내의 task가 실행될 때, Airflow Worker는 Python Interpreter 인스턴스를 또 생성한다.
+    1. DAG과 비슷하게, task들도 각자의 memory space를 가지고 있으며, 다른 task와 메모리 공유가 일반적으로는 불가능하다.
+    2. 이럴 때는 XCom을 사용하여 메모리 공유가 가능하다. 
+    
