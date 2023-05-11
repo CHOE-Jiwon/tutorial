@@ -12,7 +12,7 @@ def timefn(fn):
         return result
     return measure_time
 
-@timefn
+# @timefn
 def calculate_z_serial_purepython(maxiter, zs, cs):
     """ 줄리아 갱신 규칙을 사용해서 output 리스트 계산하기"""
     output = [0] * len(zs)
